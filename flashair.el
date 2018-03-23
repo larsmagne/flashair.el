@@ -26,11 +26,17 @@
 (require 'cl)
 (require 'url)
 
-(defvar flashair-url "192.168.12.94"
+(defvar flashair-url nil
   "The IP address (or name) of the Flashair card.")
 
-(defvar flashair-directory "~/pics/redslur/"
+(defvar flashair-directory nil
   "The directory pictures will be downloaded to.")
+
+(defvar flashair-processing-command nil
+  "If non-nil, this should be a shell script that takes two parameters.
+The first is the input image file name and the second is the
+output name.  This is meant for doing automatic transforms on the
+images that are downloaded.")
 
 (defun flashair-process-live-p (process)
   (memq (process-status process) '(open connect)))
@@ -41,12 +47,12 @@
 
 (defvar flashair-download-process nil)
 (defvar flashair-main-process nil)
+(defvar flashair-buffer nil)
 
 (defun flashair ()
   "Start monitoring flashair cards for images."
   (interactive)
-  (when flashair-main-process
-    (cancel-timer flashair-main-process))
+  (flashair-cancel)
   (setq flashair-main-process
 	(run-at-time 1 1 'flashair-keepalive)))
 
@@ -60,6 +66,12 @@
   (when flashair-main-process
     (cancel-timer flashair-main-process)
     (setq flashair-main-process nil)))
+
+(defun flashair-buffer ()
+  "Monitor a Flashair for images and insert any images into the current buffer."
+  (interactive)
+  (setq flashair-buffer (current-buffer))
+  (flashair))
 
 (defun flashair-keepalive ()
   (when (or (not flashair-download-process)
@@ -150,15 +162,39 @@
 	       (when (and (search-forward "\n\n" nil t)
 			  (= content-length
 			     (- (point-max) (point))))
-		 ;; We have downloaded the correct length.
-		 (write-region (point) (point-max)
-			       (expand-file-name (cdr image)
-						 flashair-directory)
-			       nil 'nomsg)
+		 (let ((file (expand-file-name (cdr image)
+					       flashair-directory)))
+		   ;; We have downloaded the correct length.
+		   (write-region (point) (point-max) file
+				 nil 'nomsg)
+		   (when (buffer-live-p flashair-buffer)
+		     (flashair-insert file)))
 		 (if images
 		     (flashair-download-images images)
 		   (flashair-probe))))))
 	 (kill-buffer buffer))))))
+
+(defun flashair-insert (file)
+  (let ((new (format "/tmp/n-" (file-name-nondirectory file))))
+    (if flashair-processing-command
+	(call-process flashair-processing-command nil nil nil file new)
+      (setq new file))
+    (with-current-buffer flashair-buffer
+      (let ((edges (window-inside-pixel-edges
+		    (get-buffer-window (current-buffer)))))
+	(save-excursion
+	  (goto-char (point-max))
+	  (insert-image
+	   (create-image
+	    file 'imagemagick nil
+	    :max-width
+	    (truncate
+	     (* 0.7 (- (nth 2 edges) (nth 0 edges))))
+	    :max-height
+	    (truncate
+	     (* 0.5 (- (nth 3 edges) (nth 1 edges)))))
+	   (format "<img src=%S>" new))
+	  (insert "\n\n\n\n"))))))
 
 (provide 'flashair)
 
