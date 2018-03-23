@@ -26,10 +26,10 @@
 (require 'cl)
 (require 'url)
 
-(defvar flashair-address "192.168.1.6o6"
+(defvar flashair-address "192.168.12.94"
   "The IP address (or name) of the Flashair card.")
 
-(defvar flashair-directory "~/pics/gh4/"
+(defvar flashair-directory "~/pics/redslur/"
   "The directory pictures will be downloaded to.")
 
 (defun flashair-process-live-p (process)
@@ -51,6 +51,15 @@
     (cancel-timer flashair-main-process))
   (setq flashair-main-process
 	(run-at-time 1 10 'flashair-keepalive)))
+
+(defun flashair-cancel ()
+  (when flashair-download-process
+    (delete-process (car flashair-download-process))
+    (cancel-timer (cdr flashair-download-process))
+    (setq flashair-download-process nil))
+  (when flashair-main-process
+    (cancel-timer flashair-main-process)
+    (setq flashair-main-process nil)))
 
 (defun flashair-keepalive ()
   (when (or (not flashair-download-process)
@@ -78,12 +87,13 @@
 	     (when (flashair-process-live-p process)
 	       (flashair-delete-process process)
 	       (message "No response")
+	       (kill-buffer (process-buffer process))
 	       (flashair-probe)))))
     (setq flashair-download-process (cons process timer))))
 
 (defun flashair-probe ()
   (flashair-retrieve (format "http://%s/DCIM/" flashair-address)
-		  1 'flashair-check-directory))
+		     10 'flashair-check-directory))
 
 (defun flashair-check-directory (status)
   (let ((buffer (current-buffer)))
