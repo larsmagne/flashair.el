@@ -26,18 +26,16 @@
 (require 'cl)
 (require 'url)
 
-(defvar flashair-address "192.168.12.94"
+(defvar flashair-url "192.168.12.94"
   "The IP address (or name) of the Flashair card.")
 
 (defvar flashair-directory "~/pics/redslur/"
   "The directory pictures will be downloaded to.")
 
 (defun flashair-process-live-p (process)
-  (message "Status: %s" (process-status process))
   (memq (process-status process) '(open connect)))
 
 (defun flashair-delete-process (process)
-  (message "Deleting process")
   (set-process-sentinel process nil)
   (delete-process process))
 
@@ -50,9 +48,11 @@
   (when flashair-main-process
     (cancel-timer flashair-main-process))
   (setq flashair-main-process
-	(run-at-time 1 10 'flashair-keepalive)))
+	(run-at-time 1 1 'flashair-keepalive)))
 
 (defun flashair-cancel ()
+  "Cancel Flashair monitoring."
+  (interactive)
   (when flashair-download-process
     (delete-process (car flashair-download-process))
     (cancel-timer (cdr flashair-download-process))
@@ -71,23 +71,24 @@
   (setq url-http-open-connections (make-hash-table :test 'equal :size 17))
   (let* ((url-http-attempt-keepalives nil)
 	 (timer nil)
-	 (process
-	  (get-buffer-process
-	   (url-retrieve
-	    url
-	    (lambda (status)
-	      (when timer
-		(cancel-timer timer))
-	      (funcall callback status))
-	    nil t))))
+	 buffer process)
+    (setq buffer
+	  (url-retrieve
+	   url
+	   (lambda (status)
+	     (when timer
+	       (cancel-timer timer))
+	     (funcall callback status)
+	     (kill-buffer buffer))
+	   nil t))
+    (setq process (get-buffer-process buffer))
     (setq timer
 	  (run-at-time
 	   timeout nil
 	   (lambda ()
 	     (when (flashair-process-live-p process)
 	       (flashair-delete-process process)
-	       (message "No response")
-	       (kill-buffer (process-buffer process))
+	       (kill-buffer buffer)
 	       (flashair-probe)))))
     (setq flashair-download-process (cons process timer))))
 
@@ -97,7 +98,6 @@
 
 (defun flashair-check-directory (status)
   (let ((buffer (current-buffer)))
-    (message "Checking... %s" status)
     (unless (eq (car status) :error)
       (goto-char (point-min))
       (let ((directories nil))
@@ -107,13 +107,11 @@
     (kill-buffer buffer)))
 
 (defun flashair-download-directories (directories &optional previous)
-  (message "Downloading %s" directories)
   (let ((url (format "http://%s/DCIM/%s/" flashair-address (pop directories))))
     (flashair-retrieve
      url 10
      (lambda (status)
        (let ((buffer (current-buffer)))
-	 (message "Directory status %s" status)
 	 (unless (eq (car status) :error)
 	   (let ((files nil)
 		 (to-download previous))
@@ -144,19 +142,19 @@
      (concat (car image) (cdr image)) 20
      (lambda (status)
        (let ((buffer (current-buffer)))
-	 (message "File status %s" status)
 	 (unless (eq (car status) :error)
 	   (goto-char (point-min))
 	   (when (re-search-forward "Content-Length: \\([0-9]+\\)" nil t)
 	     (let ((content-length (string-to-number (match-string 1))))
-	       (message "Downloaded %s" content-length)
+	       (message "Downloaded %s (%d bytes)" (cdr image) content-length)
 	       (when (and (search-forward "\n\n" nil t)
 			  (= content-length
 			     (- (point-max) (point))))
 		 ;; We have downloaded the correct length.
 		 (write-region (point) (point-max)
 			       (expand-file-name (cdr image)
-						 flashair-directory))
+						 flashair-directory)
+			       nil 'nomsg)
 		 (if images
 		     (flashair-download-images images)
 		   (flashair-probe))))))
