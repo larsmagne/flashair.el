@@ -175,7 +175,7 @@ images that are downloaded.")
 	 (kill-buffer buffer))))))
 
 (defun flashair-insert (file)
-  (let ((new (format "/tmp/n-" (file-name-nondirectory file))))
+  (let ((new (format "/tmp/n-%s" (file-name-nondirectory file))))
     (if flashair-processing-command
 	(call-process flashair-processing-command nil nil nil file new)
       (setq new file))
@@ -186,7 +186,7 @@ images that are downloaded.")
 	  (goto-char (point-max))
 	  (insert-image
 	   (create-image
-	    file 'imagemagick nil
+	    new 'imagemagick nil
 	    :max-width
 	    (truncate
 	     (* 0.7 (- (nth 2 edges) (nth 0 edges))))
