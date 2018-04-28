@@ -26,7 +26,7 @@
 (require 'cl)
 (require 'url)
 
-(defvar flashair-url nil
+(defvar flashair-address nil
   "The IP address (or name) of the Flashair card.")
 
 (defvar flashair-directory nil
