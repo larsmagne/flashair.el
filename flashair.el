@@ -74,6 +74,8 @@ images that are downloaded.")
   (flashair))
 
 (defun flashair-keepalive ()
+  (unless (buffer-live-p flashair-buffer)
+    (flashair-cancel))
   (when (or (not flashair-download-process)
 	    (and (not (flashair-process-live-p (car flashair-download-process)))
 		 (not (memq (cdr flashair-download-process) timer-list))))
