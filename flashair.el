@@ -84,6 +84,8 @@ images that are downloaded.")
     (goto-char (point-max))
     (insert (format "%s %s\n" (format-time-string "%FT%T")
 		    url)))
+  ;; Lingering connections to a device that isn't there just gets in
+  ;; the way.
   (maphash
    (lambda (key value)
      (when (equal (car key) flashair-address)
