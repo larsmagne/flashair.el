@@ -99,24 +99,27 @@ images that are downloaded.")
 	 (timer nil)
 	 buffer process)
     (setq buffer
-	  (url-retrieve
-	   url
-	   (lambda (status)
-	     (when timer
-	       (cancel-timer timer))
-	     (funcall callback status)
-	     (kill-buffer buffer))
-	   nil t))
-    (setq process (get-buffer-process buffer))
-    (setq timer
-	  (run-at-time
-	   timeout nil
-	   (lambda ()
-	     (when (flashair-process-live-p process)
-	       (flashair-delete-process process)
-	       (kill-buffer buffer)
-	       (flashair-probe)))))
-    (setq flashair-download-process (cons process timer))))
+	  (ignore-errors
+	    (url-retrieve
+	     url
+	     (lambda (status)
+	       (when timer
+		 (cancel-timer timer))
+	       (funcall callback status)
+	       (when (buffer-live-p buffer)
+		 (kill-buffer buffer)))
+	     nil t)))
+    (when buffer
+      (setq process (get-buffer-process buffer))
+      (setq timer
+	    (run-at-time
+	     timeout nil
+	     (lambda ()
+	       (when (flashair-process-live-p process)
+		 (flashair-delete-process process)
+		 (kill-buffer buffer)
+		 (flashair-probe)))))
+      (setq flashair-download-process (cons process timer)))))
 
 (defun flashair-probe ()
   (flashair-retrieve (format "http://%s/DCIM/" flashair-address)
