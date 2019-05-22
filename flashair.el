@@ -203,7 +203,7 @@ images that are downloaded.")
 	  (goto-char (point-max))
 	  (insert-image
 	   (create-image
-	    new 'imagemagick nil
+	    new (flashair--image-type) nil
 	    :max-width
 	    (truncate
 	     (* 0.7 (- (nth 2 edges) (nth 0 edges))))
@@ -212,6 +212,13 @@ images that are downloaded.")
 	     (* 0.5 (- (nth 3 edges) (nth 1 edges)))))
 	   (format "<img src=%S>" new))
 	  (insert "\n\n\n\n"))))))
+
+(defun flashair--image-type ()
+  (if (or (and (fboundp 'image-scaling-p)
+	       (image-scaling-p))
+	  (not (fboundp 'imagemagick-types)))
+      nil
+    'imagemagick))
 
 (provide 'flashair)
 
