@@ -214,8 +214,8 @@ images that are downloaded.")
 	  (insert "\n\n\n\n"))))))
 
 (defun flashair--image-type ()
-  (if (or (and (fboundp 'image-scaling-p)
-	       (image-scaling-p))
+  (if (or (and (fboundp 'image-transforms-p)
+	       (image-transforms-p))
 	  (not (fboundp 'imagemagick-types)))
       nil
     'imagemagick))
