@@ -92,6 +92,7 @@ images that are downloaded.")
    (lambda (key value)
      (when (equal (car key) flashair-address)
        (dolist (proc value)
+	 (set-process-sentinel proc #'ignore)
 	 (delete-process proc))
        (setf (gethash key url-http-open-connections) nil)))
    url-http-open-connections)
@@ -122,8 +123,14 @@ images that are downloaded.")
       (setq flashair-download-process (cons process timer)))))
 
 (defun flashair-probe ()
-  (flashair-retrieve (format "http://%s/DCIM/" flashair-address)
-		     10 'flashair-check-directory))
+  (let ((process (start-process "ping" nil "ping"
+				 "-c" "1" flashair-address)))
+    (set-process-sentinel
+     process
+     (lambda (process change)
+       (when (string-match "finished" change)
+	 (flashair-retrieve (format "http://%s/DCIM/" flashair-address)
+			    10 'flashair-check-directory))))))
 
 (defun flashair-check-directory (status)
   (let ((buffer (current-buffer)))
