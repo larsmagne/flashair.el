@@ -61,7 +61,8 @@ images that are downloaded.")
   (interactive)
   (when flashair-download-process
     (delete-process (car flashair-download-process))
-    (cancel-timer (cdr flashair-download-process))
+    (when (cdr flashair-download-process)
+      (cancel-timer (cdr flashair-download-process)))
     (setq flashair-download-process nil))
   (when flashair-main-process
     (cancel-timer flashair-main-process)
@@ -124,11 +125,13 @@ images that are downloaded.")
 
 (defun flashair-probe ()
   (let ((process (start-process "ping" nil "ping"
-				 "-c" "1" flashair-address)))
+				"-c" "1" flashair-address)))
+    (setq flashair-download-process (cons process nil))
     (set-process-sentinel
      process
      (lambda (process change)
        (when (string-match "finished" change)
+	 (set-process-sentinel process nil)
 	 (flashair-retrieve (format "http://%s/DCIM/" flashair-address)
 			    10 'flashair-check-directory))))))
 
@@ -205,7 +208,7 @@ images that are downloaded.")
       (setq new file))
     (with-current-buffer flashair-buffer
       (let ((edges (window-inside-pixel-edges
-		    (get-buffer-window (current-buffer)))))
+		    (get-buffer-window (current-buffer) t))))
 	(save-excursion
 	  (goto-char (point-max))
 	  (insert-image
