@@ -77,10 +77,7 @@ images that are downloaded.")
 (defun flashair-keepalive ()
   (unless (buffer-live-p flashair-buffer)
     (flashair-cancel))
-  (when (or (not flashair-download-process)
-	    (and (not (flashair-process-live-p (car flashair-download-process)))
-		 (not (memq (cdr flashair-download-process) timer-list))))
-    (flashair-probe)))
+  (flashair-probe))
 
 (defun flashair-retrieve (url timeout callback)
   (with-current-buffer (get-buffer-create "*flashair*")
@@ -124,14 +121,22 @@ images that are downloaded.")
       (setq flashair-download-process (cons process timer)))))
 
 (defun flashair-probe ()
+  (when (or (not flashair-download-process)
+	    (and (not (flashair-process-live-p (car flashair-download-process)))
+		 (not (memq (cdr flashair-download-process) timer-list))))
+    (flashair-probe-1)))
+
+(defun flashair-probe-1 ()
   (let ((process (start-process "ping" nil "ping"
 				"-c" "1" flashair-address)))
+    (message (format-time-string "%FT%T Pinging"))
     (setq flashair-download-process (cons process nil))
     (set-process-sentinel
      process
      (lambda (process change)
        (when (string-match "finished" change)
 	 (set-process-sentinel process nil)
+	 (message (format-time-string "%FT%T Retrieving"))
 	 (flashair-retrieve (format "http://%s/DCIM/" flashair-address)
 			    10 'flashair-check-directory))))))
 
