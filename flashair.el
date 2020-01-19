@@ -39,13 +39,14 @@ output name.  This is meant for doing automatic transforms on the
 images that are downloaded.")
 
 (defun flashair-process-live-p (process)
-  (memq (process-status process) '(open connect)))
+  (memq (process-status process) '(open connect run)))
 
 (defun flashair-delete-process (process)
   (set-process-sentinel process nil)
   (delete-process process))
 
 (defvar flashair-download-process nil)
+(defvar flashair-download-timer nil)
 (defvar flashair-main-process nil)
 (defvar flashair-buffer nil)
 
@@ -60,10 +61,11 @@ images that are downloaded.")
   "Cancel Flashair monitoring."
   (interactive)
   (when flashair-download-process
-    (delete-process (car flashair-download-process))
-    (when (cdr flashair-download-process)
-      (cancel-timer (cdr flashair-download-process)))
+    (delete-process flashair-download-process)
     (setq flashair-download-process nil))
+  (when flashair-download-timer
+    (cancel-timer flashair-download-timer)
+    (setq flashair-download-timer nil))
   (when flashair-main-process
     (cancel-timer flashair-main-process)
     (setq flashair-main-process nil)))
@@ -118,25 +120,25 @@ images that are downloaded.")
 		 (flashair-delete-process process)
 		 (kill-buffer buffer)
 		 (flashair-probe)))))
-      (setq flashair-download-process (cons process timer)))))
+      (setq flashair-download-process process
+	    flashait-download-timer timer))))
 
 (defun flashair-probe ()
   (when (or (not flashair-download-process)
-	    (and (not (flashair-process-live-p (car flashair-download-process)))
-		 (not (memq (cdr flashair-download-process) timer-list))))
+	    (and (not (flashair-process-live-p flashair-download-process))
+		 (not (memq flashair-download-timer timer-list))))
     (flashair-probe-1)))
 
 (defun flashair-probe-1 ()
   (let ((process (start-process "ping" nil "ping"
 				"-c" "1" flashair-address)))
-    (message (format-time-string "%FT%T Pinging"))
-    (setq flashair-download-process (cons process nil))
+    ;;(message (format-time-string "%FT%T Pinging"))
+    (setq flashair-download-process process)
     (set-process-sentinel
      process
      (lambda (process change)
        (when (string-match "finished" change)
 	 (set-process-sentinel process nil)
-	 (message (format-time-string "%FT%T Retrieving"))
 	 (flashair-retrieve (format "http://%s/DCIM/" flashair-address)
 			    10 'flashair-check-directory))))))
 
