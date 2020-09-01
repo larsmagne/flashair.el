@@ -38,6 +38,9 @@ The first is the input image file name and the second is the
 output name.  This is meant for doing automatic transforms on the
 images that are downloaded.")
 
+(defvar flashair-float-images nil
+  "If non-nil, add float right/left markers to inserted images.")
+
 (defun flashair-process-live-p (process)
   (memq (process-status process) '(open connect run)))
 
@@ -208,6 +211,8 @@ images that are downloaded.")
 		   (flashair-probe))))))
 	 (kill-buffer buffer))))))
 
+(defvar flashair-insert-count 0)
+
 (defun flashair-insert (file)
   (let ((new (format "/tmp/n-%s" (file-name-nondirectory file))))
     (if flashair-processing-command
@@ -218,6 +223,13 @@ images that are downloaded.")
 		    (get-buffer-window (current-buffer) t))))
 	(save-excursion
 	  (goto-char (point-max))
+	  (when flashair-float-images
+	    (let ((right (zerop (mod (incf flashair-insert-count) 2)))
+		  (start (point)))
+	      (insert (format "<p style=\"clear: both;\"><p class=\"%s-img\">"
+			      (if right "right" "left")))
+	      (put-text-property start (point)
+				 'display (if right "⇢" "⇠"))))
 	  (insert-image
 	   (create-image
 	    new (flashair--image-type) nil
