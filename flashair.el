@@ -224,7 +224,7 @@ images that are downloaded.")
 	(save-excursion
 	  (goto-char (point-max))
 	  (when flashair-float-images
-	    (let ((right (zerop (mod (incf flashair-insert-count) 2)))
+	    (let ((right (zerop (mod (cl-incf flashair-insert-count) 2)))
 		  (start (point)))
 	      (insert (format "<p style=\"clear: both;\"><p class=\"%s-img\">"
 			      (if right "right" "left")))
